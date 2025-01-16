@@ -1,35 +1,48 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useRef, useState } from "react";
+import { Texture, Vector2 } from "three";
+import { useThrottledCallback } from "use-debounce";
+import "./App.css";
+import { ImageSelector } from "./ImageSelector";
+import { Renderer } from "./Renderer";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const canvasContainer = useRef<HTMLDivElement>(null);
+  const renderer = useRef<Renderer | null>(null);
+  function getRenderer(): Renderer {
+    if (renderer.current == null) {
+      renderer.current = new Renderer();
+    }
+    return renderer.current;
+  }
+  const [iterationCount, setIterationCount] = useState(
+    getRenderer().getCurrentIterationCount()
+  );
+
+  const updateIterationCount = useThrottledCallback(() => {
+    setIterationCount(getRenderer().getCurrentIterationCount());
+  }, 100);
+
+  useEffect(() => {
+    console.log("Use effect");
+    getRenderer().onRender(updateIterationCount);
+    if (canvasContainer.current == null) {
+      throw new Error("Missing canvas");
+    }
+    const canvas = getRenderer().getCanvas();
+    canvasContainer.current?.appendChild(canvas);
+  }, []);
+
+  function onSelect(texture: Texture, size: Vector2) {
+    getRenderer().load(texture, size);
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div>
+      <ImageSelector onSelect={onSelect} />
+      <div>Iterations: {iterationCount}</div>
+      <div ref={canvasContainer} />
+    </div>
+  );
 }
 
-export default App
+export default App;
