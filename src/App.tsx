@@ -17,6 +17,7 @@ function App() {
   const [iterationCount, setIterationCount] = useState(
     getRenderer().getCurrentIterationCount()
   );
+  const [wantedIterationCount, setWantedIterationCount] = useState(512);
 
   const updateIterationCount = useThrottledCallback(() => {
     setIterationCount(getRenderer().getCurrentIterationCount());
@@ -36,10 +37,27 @@ function App() {
     getRenderer().load(texture, size);
   }
 
+  function run() {
+    getRenderer().run(wantedIterationCount);
+  }
+
   return (
     <div>
       <ImageSelector onSelect={onSelect} />
-      <div>Iterations: {iterationCount}</div>
+      <div style={{ display: "flex" }}>
+        <div>
+          Iterations
+          <input
+            type="number"
+            value={wantedIterationCount}
+            onChange={(e) =>
+              setWantedIterationCount(parseInt(e.target.value, 10))
+            }
+          />
+        </div>
+        <button onClick={run}>Run</button>
+        <div>Iterations: {iterationCount}</div>
+      </div>
       <div ref={canvasContainer} />
     </div>
   );

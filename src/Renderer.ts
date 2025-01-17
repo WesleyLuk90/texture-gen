@@ -6,7 +6,7 @@ import {
   ShaderMaterial,
   Texture,
   Vector2,
-  WebGLRenderer
+  WebGLRenderer,
 } from "three";
 import { HeightmapBuffer } from "./HeightmapBuffer";
 import renderFragmentShaderSource from "./render-fragment.glsl?raw";
@@ -70,19 +70,19 @@ export class Renderer {
     this.material.uniforms.max.value = max;
   }
 
-  iterationLimit = 2048;
+  iterationLimit = 0;
   iteration = 0;
   render() {
-    this.iteration++;
-    if (this.iteration <= this.iterationLimit) {
+    if (this.iteration < this.iterationLimit) {
+      this.iteration++;
       this.buffer1.setRenderTarget(this.renderer);
       this.buffer2.render(this.renderer);
 
       this.buffer2.setRenderTarget(this.renderer);
       this.buffer1.render(this.renderer);
-    }
-    if (this.iteration % 50 == 0 || this.iteration == this.iterationLimit) {
-      this.recomputeRange();
+      if (this.iteration % 50 == 0 || this.iteration == this.iterationLimit) {
+        this.recomputeRange();
+      }
     }
 
     this.renderer.setRenderTarget(null);
@@ -116,12 +116,22 @@ export class Renderer {
     this.renderer.domElement.style.height = "1024px";
 
     this.buffer1.configure(normalTexture, size);
-    this.buffer1.reset(this.renderer);
     this.buffer2.configure(normalTexture, size);
-    this.buffer2.reset(this.renderer);
+    this.reset();
 
     this.material.uniforms.renderTexture.value =
       this.buffer2.getRenderTexture().texture;
     this.material.needsUpdate = true;
+  }
+
+  reset() {
+    this.iteration = 0;
+    this.buffer1.reset(this.renderer);
+    this.buffer2.reset(this.renderer);
+  }
+
+  run(iterationCount: number) {
+    this.iterationLimit = iterationCount;
+    this.reset();
   }
 }
