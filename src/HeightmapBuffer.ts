@@ -1,4 +1,3 @@
-import { WebGL } from "three/examples/jsm/Addons.js";
 import heightmapFragmentSource from "./heightmap-fragment.glsl?raw";
 import vertexShaderSource from "./vertex.glsl?raw";
 import {

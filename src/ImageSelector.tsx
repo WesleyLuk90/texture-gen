@@ -1,4 +1,4 @@
-import { SRGBColorSpace, Texture, TextureLoader, Vector2 } from "three";
+import { Texture, TextureLoader, Vector2 } from "three";
 
 export function ImageSelector({
   onSelect,
