@@ -36,6 +36,7 @@ export class Renderer {
     fragmentShader: renderFragmentShaderSource,
   });
   private callback?: () => void;
+  range: number[] = [];
   constructor() {
     console.log("Create renderer");
     const cube = new Mesh(this.geometry, this.material);
@@ -68,6 +69,7 @@ export class Renderer {
     }
     this.material.uniforms.min.value = min;
     this.material.uniforms.max.value = max;
+    this.range = [min, max];
   }
 
   iterationLimit = 0;
@@ -110,7 +112,9 @@ export class Renderer {
     this.renderer.dispose();
   }
 
+  size: Vector2 = new Vector2(0, 0);
   load(normalTexture: Texture, size: Vector2) {
+    this.size = size;
     this.renderer.setSize(size.x, size.y);
     this.renderer.domElement.style.width = "1024px";
     this.renderer.domElement.style.height = "1024px";
@@ -133,5 +137,11 @@ export class Renderer {
   run(iterationCount: number) {
     this.iterationLimit = iterationCount;
     this.reset();
+  }
+  getSize() {
+    return this.size;
+  }
+  getImage() {
+    return this.buffer2.getPixels(this.renderer);
   }
 }
