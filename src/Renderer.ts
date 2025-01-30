@@ -1,4 +1,5 @@
 import {
+  FloatType,
   Mesh,
   OrthographicCamera,
   PlaneGeometry,
@@ -7,10 +8,12 @@ import {
   Texture,
   Vector2,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 import { HeightmapBuffer } from "./HeightmapBuffer";
 import renderFragmentShaderSource from "./render-fragment.glsl?raw";
 import vertexShaderSource from "./vertex.glsl?raw";
+import { EXRExporter } from "three/examples/jsm/Addons.js";
 
 export class Renderer {
   private renderer = new WebGLRenderer();
@@ -132,6 +135,23 @@ export class Renderer {
     this.iteration = 0;
     this.buffer1.reset(this.renderer);
     this.buffer2.reset(this.renderer);
+  }
+
+  async export() {
+    this.recomputeRange();
+    const heightmapOut = new WebGLRenderTarget(this.size.x, this.size.y, {
+      type: FloatType,
+      depthBuffer: false,
+    });
+    this.renderer.setRenderTarget(heightmapOut);
+    this.renderer.render(this.scene, this.camera);
+    const exporter = new EXRExporter();
+    const exrData = await exporter.parse(this.renderer, heightmapOut, {
+      type: FloatType,
+    });
+    heightmapOut.dispose();
+    this.renderer.setRenderTarget(null);
+    return exrData;
   }
 
   run(iterationCount: number) {
