@@ -4,7 +4,6 @@ import { useThrottledCallback } from "use-debounce";
 import "./App.css";
 import { ImageSelector } from "./ImageSelector";
 import { Renderer } from "./Renderer";
-import { encode } from "fast-png";
 
 function App() {
   const canvasContainer = useRef<HTMLDivElement>(null);
