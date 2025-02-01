@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Texture, Vector2 } from "three";
+import { Mesh, Texture, Vector2 } from "three";
 import { useThrottledCallback } from "use-debounce";
 import "./App.css";
 import { ImageSelector } from "./ImageSelector";
 import { Renderer } from "./Renderer";
+import { GLTFSelector } from "./GLTFSelector";
+import { GLTF } from "three/examples/jsm/Addons.js";
 
 function App() {
   const canvasContainer = useRef<HTMLDivElement>(null);
@@ -33,10 +35,16 @@ function App() {
     canvasContainer.current?.appendChild(canvas);
   }, []);
 
-  function onSelect(texture: Texture, size: Vector2) {
+  function onSelectImage(texture: Texture, size: Vector2) {
     getRenderer().load(texture, size);
   }
 
+  function onSelectGLTF(gltf: GLTF) {
+    const children = gltf.scene.children;
+    console.log(`GLTF has ${children.length} objects`);
+    const mesh = children[0] as Mesh;
+    getRenderer().loadGLTF(mesh);
+  }
   function run() {
     getRenderer().run(wantedIterationCount);
   }
@@ -53,7 +61,8 @@ function App() {
 
   return (
     <div>
-      <ImageSelector onSelect={onSelect} />
+      <GLTFSelector onSelect={onSelectGLTF} />
+      <ImageSelector onSelect={onSelectImage} />
       <div style={{ display: "flex" }}>
         <div>
           Iterations

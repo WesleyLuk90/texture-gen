@@ -1,5 +1,6 @@
 import {
   FloatType,
+  Material,
   Mesh,
   OrthographicCamera,
   PlaneGeometry,
@@ -163,5 +164,62 @@ export class Renderer {
   }
   getImage() {
     return this.buffer2.getPixels(this.renderer);
+  }
+  loadGLTF(mesh: Mesh) {
+    const material: Material = Array.isArray(mesh.material)
+      ? mesh.material[0]
+      : mesh.material;
+    const geometry = mesh.geometry;
+    console.log(material);
+    console.log(geometry);
+    const indexes = geometry.index?.array;
+    if (indexes == null) {
+      throw new Error("Expected indexes");
+    }
+
+    const positions = geometry.attributes.position.array;
+    const uv = geometry.attributes.uv.array;
+    const triangleCount = indexes?.length / 3;
+    console.log("Triangle count", triangleCount);
+    console.log("Vertex count", positions.length / 3);
+    const edgesCount = new Map<string, number>();
+    function getVertex(index: number) {
+      if (index * 3 > positions.length) {
+        throw new Error(`Invalid index ${index}`);
+      }
+      return positions.slice(index * 3, index * 3 + 3).join(",");
+    }
+    for (let i = 0; i < triangleCount; i++) {
+      const ai = indexes[i * 3];
+      const bi = indexes[i * 3 + 1];
+      const ci = indexes[i * 3 + 2];
+      const a = getVertex(ai);
+      const b = getVertex(bi);
+      const c = getVertex(ci);
+      const ab = toEdge(a, b);
+      const bc = toEdge(b, c);
+      const ac = toEdge(a, c);
+      edgesCount.set(ab, (edgesCount.get(ab) ?? 0) + 1);
+      edgesCount.set(bc, (edgesCount.get(bc) ?? 0) + 1);
+      edgesCount.set(ac, (edgesCount.get(ac) ?? 0) + 1);
+    }
+
+    console.log(`Unique edges ${edgesCount.size}`);
+    const adjacentCount = new Map<number, number>();
+    Array.from(edgesCount.entries()).forEach((entry) => {
+      adjacentCount.set(entry[1], (adjacentCount.get(entry[1]) ?? 0) + 1);
+      if (entry[1] > 10) {
+        console.log(entry);
+      }
+    });
+    console.log(adjacentCount);
+  }
+}
+
+function toEdge(a: string, b: string): string {
+  if (a < b) {
+    return `${a}:${b}`;
+  } else {
+    return `${b}:${a}`;
   }
 }

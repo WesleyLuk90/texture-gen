@@ -1,9 +1,10 @@
 import { Texture, TextureLoader, Vector2 } from "three";
+import { GLTF, GLTFLoader } from "three/examples/jsm/Addons.js";
 
-export function ImageSelector({
+export function GLTFSelector({
   onSelect,
 }: {
-  onSelect: (texture: Texture, size: Vector2) => void;
+  onSelect: (gltf: GLTF) => void;
 }) {
   function onSelectFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.item(0);
@@ -11,20 +12,16 @@ export function ImageSelector({
       return;
     }
     event.target.files = null;
+    const loader = new GLTFLoader();
     const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      onSelect(
-        new TextureLoader().load(url),
-        new Vector2(img.width, img.height)
-      );
-    };
-    img.src = url;
+    loader.load(url, (gltf => {
+      onSelect(gltf)
+    }), undefined, err => console.error(err))
   }
 
   return (
     <div>
-      Normal Map:
+      GLTF:
       <input type="file" onChange={onSelectFile} />
     </div>
   );
