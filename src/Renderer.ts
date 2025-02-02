@@ -5,14 +5,14 @@ import {
   Mesh,
   MeshStandardMaterial,
   OrthographicCamera,
-  PlaneGeometry,
   Scene,
   ShaderMaterial,
   Texture,
   WebGLRenderer,
-  WebGLRenderTarget,
+  WebGLRenderTarget
 } from "three";
 import { EXRExporter } from "three/examples/jsm/Addons.js";
+import { createUnitPlane } from "./Geometry";
 import { Pipeline } from "./Pipeline";
 import { PipelineFactory } from "./PipelineFactory";
 import renderFragmentShaderSource from "./render-fragment.glsl?raw";
@@ -21,8 +21,7 @@ import vertexShaderSource from "./vertex.glsl?raw";
 
 export class Renderer {
   private renderer = new WebGLRenderer();
-  private camera = new OrthographicCamera(-1, 1, 1, -1, -1, 1);
-  private geometry = new PlaneGeometry(2, 2);
+  private camera = new OrthographicCamera(0, 1, 1, 0, -1, 1);
 
   private scene = new Scene();
   private material = new ShaderMaterial({
@@ -44,8 +43,8 @@ export class Renderer {
   private factory = new PipelineFactory();
   constructor() {
     console.log("Create renderer");
-    const cube = new Mesh(this.geometry, this.material);
-    this.scene.add(cube);
+    const plane = createUnitPlane(this.material);
+    this.scene.add(plane);
     this.renderer.setAnimationLoop(() => this.render());
   }
 

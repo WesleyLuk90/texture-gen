@@ -5,18 +5,17 @@ import {
   Mesh,
   NormalBufferAttributes,
   OrthographicCamera,
-  PlaneGeometry,
   Scene,
   ShaderMaterial,
   Texture,
   WebGLRenderer,
-  WebGLRenderTarget,
+  WebGLRenderTarget
 } from "three";
+import { createUnitPlane } from "./Geometry";
 import heightmapFragmentSource from "./heightmap-fragment.glsl?raw";
 import { getTextureSize } from "./Textures";
 import vertexShaderSource from "./vertex.glsl?raw";
 export class HeightmapRenderStage {
-  private geometry = new PlaneGeometry(2, 2);
   private material = new ShaderMaterial({
     uniforms: {
       normalMap: {
@@ -32,12 +31,12 @@ export class HeightmapRenderStage {
     fragmentShader: heightmapFragmentSource,
   });
   private scene = new Scene();
-  private camera = new OrthographicCamera(-1, 1, 1, -1, -1, 1);
+  private camera = new OrthographicCamera(0, 1, 1, 0, -1, 1);
   private mesh: Mesh;
   private outputHeightmap: WebGLRenderTarget<Texture>;
 
   constructor(normalMap: Texture) {
-    this.mesh = new Mesh(this.geometry, this.material);
+    this.mesh = createUnitPlane(this.material);
     this.scene.add(this.mesh);
 
     const size = getTextureSize(normalMap);
