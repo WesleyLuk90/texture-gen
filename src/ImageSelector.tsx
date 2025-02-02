@@ -1,25 +1,20 @@
-import { Texture, TextureLoader, Vector2 } from "three";
+import { Texture, TextureLoader } from "three";
 
 export function ImageSelector({
   onSelect,
 }: {
-  onSelect: (texture: Texture, size: Vector2) => void;
+  onSelect: (texture: Texture) => void;
 }) {
   function onSelectFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.item(0);
     if (!file) {
       return;
     }
-    event.target.files = null;
+    event.target.value = "";
     const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      onSelect(
-        new TextureLoader().load(url),
-        new Vector2(img.width, img.height)
-      );
-    };
-    img.src = url;
+    new TextureLoader().load(url, (texture) => {
+      onSelect(texture);
+    });
   }
 
   return (

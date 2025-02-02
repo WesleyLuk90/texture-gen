@@ -33,6 +33,11 @@ function App() {
     }
     const canvas = getRenderer().getCanvas();
     canvasContainer.current?.appendChild(canvas);
+    return () => {
+      getRenderer().dispose();
+      canvasContainer.current?.removeChild(canvas);
+      renderer.current = null;
+    };
   }, []);
 
   function onSelectImage(texture: Texture, size: Vector2) {
@@ -42,7 +47,11 @@ function App() {
   function onSelectGLTF(gltf: GLTF) {
     const children = gltf.scene.children;
     console.log(`GLTF has ${children.length} objects`);
-    const mesh = children[0] as Mesh;
+    const index = children.findIndex((child) => child instanceof Mesh);
+    if (index == -1) {
+      throw new Error("Failed to find mesh in object");
+    }
+    const mesh = children[index] as Mesh;
     getRenderer().loadGLTF(mesh);
   }
   function run() {
@@ -50,7 +59,7 @@ function App() {
   }
 
   async function download() {
-    const exr = await getRenderer().export()
+    const exr = await getRenderer().export();
     const blob = new Blob([exr], { type: "image/x-exr" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");

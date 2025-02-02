@@ -1,7 +1,9 @@
 import {
+  BufferGeometry,
+  Float32BufferAttribute,
   FloatType,
-  Material,
   Mesh,
+  MeshStandardMaterial,
   OrthographicCamera,
   PlaneGeometry,
   Scene,
@@ -11,22 +13,22 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
-import { HeightmapBuffer } from "./HeightmapBuffer";
-import renderFragmentShaderSource from "./render-fragment.glsl?raw";
-import vertexShaderSource from "./vertex.glsl?raw";
 import { EXRExporter } from "three/examples/jsm/Addons.js";
+import { Pipeline } from "./Pipeline";
+import { PipelineFactory } from "./PipelineFactory";
+import renderFragmentShaderSource from "./render-fragment.glsl?raw";
+import { getTextureSize } from "./Textures";
+import vertexShaderSource from "./vertex.glsl?raw";
 
 export class Renderer {
   private renderer = new WebGLRenderer();
   private camera = new OrthographicCamera(-1, 1, 1, -1, -1, 1);
   private geometry = new PlaneGeometry(2, 2);
 
-  private buffer1 = new HeightmapBuffer();
-  private buffer2 = new HeightmapBuffer();
   private scene = new Scene();
   private material = new ShaderMaterial({
     uniforms: {
-      renderTexture: {
+      heightmapTexture: {
         value: null,
       },
       min: {
@@ -41,6 +43,7 @@ export class Renderer {
   });
   private callback?: () => void;
   range: number[] = [];
+  private factory = new PipelineFactory();
   constructor() {
     console.log("Create renderer");
     const cube = new Mesh(this.geometry, this.material);
@@ -48,49 +51,13 @@ export class Renderer {
     this.renderer.setAnimationLoop(() => this.render());
   }
 
-  recomputeRange() {
-    const out = this.buffer2.getPixels(this.renderer);
-    if (!out) {
-      console.log(`No pixels`);
-      return;
-    }
-    const count = out.length / 4;
-    let min = out[0];
-    let max = out[0];
-    for (let i = 0; i < count; i++) {
-      const value = out[i * 4];
-      if (value < min) {
-        min = value;
-      }
-      if (value > max) {
-        max = value;
-      }
-    }
-    console.log(`New range is ${min.toFixed(4)} to ${max.toFixed(4)}`);
-    if (min == max) {
-      min = 0;
-      max = 1;
-    }
-    this.material.uniforms.min.value = min;
-    this.material.uniforms.max.value = max;
-    this.range = [min, max];
-  }
-
-  iterationLimit = 0;
-  iteration = 0;
   render() {
-    if (this.iteration < this.iterationLimit) {
-      this.iteration++;
-      this.buffer1.setRenderTarget(this.renderer);
-      this.buffer2.render(this.renderer);
-
-      this.buffer2.setRenderTarget(this.renderer);
-      this.buffer1.render(this.renderer);
-      if (this.iteration % 50 == 0 || this.iteration == this.iterationLimit) {
-        this.recomputeRange();
-      }
+    if (this.pipeline != null) {
+      this.pipeline?.render(this.renderer);
+      const [min, max] = this.pipeline.getRange();
+      this.material.uniforms.min.value = min;
+      this.material.uniforms.max.value = max;
     }
-
     this.renderer.setRenderTarget(null);
     this.renderer.render(this.scene, this.camera);
 
@@ -100,7 +67,7 @@ export class Renderer {
   }
 
   getCurrentIterationCount() {
-    return this.iteration;
+    return this.pipeline?.getIteration();
   }
 
   onRender(callback: () => void) {
@@ -113,33 +80,32 @@ export class Renderer {
 
   dispose() {
     console.log("Dipose");
+    this.pipeline?.dispose();
     this.renderer.dispose();
   }
 
   size: Vector2 = new Vector2(0, 0);
-  load(normalTexture: Texture, size: Vector2) {
-    this.size = size;
+  private pipeline?: Pipeline;
+  load(normalTexture: Texture) {
+    const size = getTextureSize(normalTexture);
+    this.pipeline = this.factory.fromNormalMap(normalTexture);
     this.renderer.setSize(size.x, size.y);
     this.renderer.domElement.style.width = "1024px";
     this.renderer.domElement.style.height = "1024px";
 
-    this.buffer1.configure(normalTexture, size);
-    this.buffer2.configure(normalTexture, size);
-    this.reset();
-
-    this.material.uniforms.renderTexture.value =
-      this.buffer2.getRenderTexture().texture;
+    this.material.uniforms.heightmapTexture.value =
+      this.pipeline.getOutputTexture().texture;
     this.material.needsUpdate = true;
+
+    this.reset();
   }
 
   reset() {
-    this.iteration = 0;
-    this.buffer1.reset(this.renderer);
-    this.buffer2.reset(this.renderer);
+    this.pipeline?.reset();
   }
 
   async export() {
-    this.recomputeRange();
+    // this.recomputeRange();
     const heightmapOut = new WebGLRenderTarget(this.size.x, this.size.y, {
       type: FloatType,
       depthBuffer: false,
@@ -156,19 +122,16 @@ export class Renderer {
   }
 
   run(iterationCount: number) {
-    this.iterationLimit = iterationCount;
     this.reset();
   }
   getSize() {
     return this.size;
   }
-  getImage() {
-    return this.buffer2.getPixels(this.renderer);
-  }
+
   loadGLTF(mesh: Mesh) {
-    const material: Material = Array.isArray(mesh.material)
-      ? mesh.material[0]
-      : mesh.material;
+    const material: MeshStandardMaterial = (
+      Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+    ) as MeshStandardMaterial;
     const geometry = mesh.geometry;
     console.log(material);
     console.log(geometry);
@@ -178,7 +141,6 @@ export class Renderer {
     }
 
     const positions = geometry.attributes.position.array;
-    const uv = geometry.attributes.uv.array;
     const triangleCount = indexes?.length / 3;
     console.log("Triangle count", triangleCount);
     console.log("Vertex count", positions.length / 3);
@@ -213,6 +175,25 @@ export class Renderer {
       }
     });
     console.log(adjacentCount);
+
+    const uvMesh = this.toUVMesh(mesh);
+    // this.buffer1.setMesh(uvMesh);
+    // this.buffer2.setMesh(uvMesh);
+    // this.load(material.normalMap);
+  }
+
+  toUVMesh(mesh: Mesh): BufferGeometry {
+    const geometry = new BufferGeometry();
+    const indexes = mesh.geometry.getIndex();
+    if (indexes == null) {
+      throw new Error("Indexes was null");
+    }
+    const uvs = mesh.geometry.attributes.uv.array;
+
+    geometry.setAttribute("position", new Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute("uvs", new Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indexes);
+    return geometry;
   }
 }
 

@@ -1,19 +1,21 @@
-import heightmapFragmentSource from "./heightmap-fragment.glsl?raw";
-import vertexShaderSource from "./vertex.glsl?raw";
 import {
+  BufferGeometry,
   Color,
   FloatType,
   Mesh,
+  NormalBufferAttributes,
   OrthographicCamera,
   PlaneGeometry,
   Scene,
   ShaderMaterial,
   Texture,
-  Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
-export class HeightmapBuffer {
+import heightmapFragmentSource from "./heightmap-fragment.glsl?raw";
+import { getTextureSize } from "./Textures";
+import vertexShaderSource from "./vertex.glsl?raw";
+export class HeightmapRenderStage {
   private geometry = new PlaneGeometry(2, 2);
   private material = new ShaderMaterial({
     uniforms: {
@@ -32,59 +34,68 @@ export class HeightmapBuffer {
   private scene = new Scene();
   private camera = new OrthographicCamera(-1, 1, 1, -1, -1, 1);
   private mesh: Mesh;
-  private heightmap?: WebGLRenderTarget<Texture>;
+  private outputHeightmap: WebGLRenderTarget<Texture>;
 
-  constructor() {
+  constructor(normalMap: Texture) {
     this.mesh = new Mesh(this.geometry, this.material);
     this.scene.add(this.mesh);
-  }
 
-  configure(normalTexture: Texture, size: Vector2) {
-    const heightMap = new WebGLRenderTarget(size.x, size.y, {
+    const size = getTextureSize(normalMap);
+    this.outputHeightmap = new WebGLRenderTarget(size.x, size.y, {
       type: FloatType,
       depthBuffer: false,
     });
-    this.heightmap = heightMap;
     this.material.uniforms.width.value = size.x;
-    this.material.uniforms.height.value = size.x;
-    this.material.uniforms.baseHeightmap.value = heightMap.texture;
-    this.material.uniforms.normalMap.value = normalTexture;
+    this.material.uniforms.height.value = size.y;
+    this.material.uniforms.normalMap.value = normalMap;
+  }
+
+  setSourceHeightmap(texture: Texture) {
+    this.material.uniforms.baseHeightmap.value = texture;
     this.material.needsUpdate = true;
-    return heightMap;
   }
 
   reset(renderer: WebGLRenderer) {
-    if (this.heightmap != null) {
-      renderer.setClearColor(new Color(0, 0, 0), 1);
-      renderer.setRenderTarget(this.heightmap);
-      renderer.clear();
-    }
+    renderer.setClearColor(new Color(0, 0, 0), 1);
+    renderer.setRenderTarget(this.outputHeightmap);
+    renderer.clear();
   }
 
   setRenderTarget(renderer: WebGLRenderer) {
-    if (this.heightmap != null) {
-      renderer.setRenderTarget(this.heightmap);
-    }
+    renderer.setRenderTarget(this.outputHeightmap);
   }
 
   render(renderer: WebGLRenderer) {
+    this.setRenderTarget(renderer);
     renderer.render(this.scene, this.camera);
   }
 
   getPixels(renderer: WebGLRenderer): Float32Array | null {
-    if (!this.heightmap) {
-      return null;
-    }
     const width = this.material.uniforms.width.value;
     const height = this.material.uniforms.height.value;
     const out = new Float32Array(4 * width * height);
-    renderer.readRenderTargetPixels(this.heightmap, 0, 0, width, height, out);
+    renderer.readRenderTargetPixels(
+      this.outputHeightmap,
+      0,
+      0,
+      width,
+      height,
+      out
+    );
     return out;
   }
-  getRenderTexture() {
-    if (this.heightmap == null) {
-      throw new Error("Render texture has not been created");
-    }
-    return this.heightmap;
+
+  getOutputHeightmap() {
+    return this.outputHeightmap;
+  }
+
+  setMesh(uvMesh: BufferGeometry<NormalBufferAttributes>) {
+    this.scene.clear();
+    this.mesh = new Mesh(uvMesh, this.material);
+    this.scene.add(this.mesh);
+  }
+
+  dispose() {
+    this.outputHeightmap.dispose();
   }
 }
