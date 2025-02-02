@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Mesh, Texture, Vector2 } from "three";
+import { Mesh, Texture } from "three";
+import { GLTF } from "three/examples/jsm/Addons.js";
 import { useThrottledCallback } from "use-debounce";
 import "./App.css";
+import { GLTFSelector } from "./GLTFSelector";
 import { ImageSelector } from "./ImageSelector";
 import { Renderer } from "./Renderer";
-import { GLTFSelector } from "./GLTFSelector";
-import { GLTF } from "three/examples/jsm/Addons.js";
 
 function App() {
   const canvasContainer = useRef<HTMLDivElement>(null);
@@ -16,18 +16,15 @@ function App() {
     }
     return renderer.current;
   }
-  const [iterationCount, setIterationCount] = useState(
-    getRenderer().getCurrentIterationCount()
-  );
+  const [iterationCount, setIterationCount] = useState(0);
   const [wantedIterationCount, setWantedIterationCount] = useState(512);
 
-  const updateIterationCount = useThrottledCallback(() => {
-    setIterationCount(getRenderer().getCurrentIterationCount());
+  const updateIterationCount = useThrottledCallback((iteration: number) => {
+    setIterationCount(iteration);
   }, 100);
 
   useEffect(() => {
     console.log("Use effect");
-    getRenderer().onRender(updateIterationCount);
     if (canvasContainer.current == null) {
       throw new Error("Missing canvas");
     }
@@ -40,8 +37,8 @@ function App() {
     };
   }, []);
 
-  function onSelectImage(texture: Texture, size: Vector2) {
-    getRenderer().load(texture, size);
+  function onSelectImage(texture: Texture) {
+    getRenderer().load(texture);
   }
 
   function onSelectGLTF(gltf: GLTF) {
@@ -55,11 +52,11 @@ function App() {
     getRenderer().loadGLTF(mesh);
   }
   function run() {
-    getRenderer().run(wantedIterationCount);
+    getRenderer().run(wantedIterationCount, updateIterationCount);
   }
 
   async function download() {
-    const exr = await getRenderer().export();
+    const exr = await getRenderer().getEXRData();
     const blob = new Blob([exr], { type: "image/x-exr" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");

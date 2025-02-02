@@ -9,7 +9,6 @@ import {
   Scene,
   ShaderMaterial,
   Texture,
-  Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
@@ -42,7 +41,6 @@ export class Renderer {
     fragmentShader: renderFragmentShaderSource,
   });
   private callback?: () => void;
-  range: number[] = [];
   private factory = new PipelineFactory();
   constructor() {
     console.log("Create renderer");
@@ -51,7 +49,7 @@ export class Renderer {
     this.renderer.setAnimationLoop(() => this.render());
   }
 
-  render() {
+  private render() {
     if (this.pipeline != null) {
       this.pipeline?.render(this.renderer);
       const [min, max] = this.pipeline.getRange();
@@ -66,14 +64,6 @@ export class Renderer {
     }
   }
 
-  getCurrentIterationCount() {
-    return this.pipeline?.getIteration();
-  }
-
-  onRender(callback: () => void) {
-    this.callback = callback;
-  }
-
   getCanvas() {
     return this.renderer.domElement;
   }
@@ -84,7 +74,6 @@ export class Renderer {
     this.renderer.dispose();
   }
 
-  size: Vector2 = new Vector2(0, 0);
   private pipeline?: Pipeline;
   load(normalTexture: Texture) {
     const size = getTextureSize(normalTexture);
@@ -96,17 +85,18 @@ export class Renderer {
     this.material.uniforms.heightmapTexture.value =
       this.pipeline.getOutputTexture().texture;
     this.material.needsUpdate = true;
-
-    this.reset();
   }
 
-  reset() {
-    this.pipeline?.reset();
+  run(iterationCount: number, callback: (iteration: number) => void) {
+    this.pipeline?.start(iterationCount, callback);
   }
 
-  async export() {
-    // this.recomputeRange();
-    const heightmapOut = new WebGLRenderTarget(this.size.x, this.size.y, {
+  async getEXRData() {
+    if (!this.pipeline) {
+      throw new Error("No pipeline loaded");
+    }
+    const size = this.pipeline.getSize();
+    const heightmapOut = new WebGLRenderTarget(size.x, size.y, {
       type: FloatType,
       depthBuffer: false,
     });
@@ -119,13 +109,6 @@ export class Renderer {
     heightmapOut.dispose();
     this.renderer.setRenderTarget(null);
     return exrData;
-  }
-
-  run(iterationCount: number) {
-    this.reset();
-  }
-  getSize() {
-    return this.size;
   }
 
   loadGLTF(mesh: Mesh) {
@@ -176,7 +159,7 @@ export class Renderer {
     });
     console.log(adjacentCount);
 
-    const uvMesh = this.toUVMesh(mesh);
+    // const uvMesh = this.toUVMesh(mesh);
     // this.buffer1.setMesh(uvMesh);
     // this.buffer2.setMesh(uvMesh);
     // this.load(material.normalMap);

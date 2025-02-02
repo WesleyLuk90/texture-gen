@@ -1,6 +1,7 @@
 import { Texture } from "three";
 import { HeightmapRenderStage } from "./HeightmapRenderStage";
 import { Pipeline } from "./Pipeline";
+import { getTextureSize } from "./Textures";
 
 export class PipelineFactory {
   fromNormalMap(normalMap: Texture): Pipeline {
@@ -15,6 +16,6 @@ export class PipelineFactory {
       stage.setSourceHeightmap(previousStage.getOutputHeightmap().texture);
     });
 
-    return new Pipeline(stages);
+    return new Pipeline(stages, getTextureSize(normalMap));
   }
 }

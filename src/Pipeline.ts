@@ -1,10 +1,11 @@
-import { WebGLRenderer } from "three";
+import { Vector2, WebGLRenderer } from "three";
 import { HeightmapRenderStage } from "./HeightmapRenderStage";
 
 export class Pipeline {
-  private iterationLimit = 512;
+  private iterationLimit = 0;
   private iteration = 0;
-  constructor(private stages: HeightmapRenderStage[]) {}
+  callback?: (iteration: number) => void;
+  constructor(private stages: HeightmapRenderStage[], private size: Vector2) {}
 
   render(renderer: WebGLRenderer) {
     if (this.iteration < this.iterationLimit) {
@@ -17,8 +18,15 @@ export class Pipeline {
         stage.setRenderTarget(renderer);
         previousStage.render(renderer);
       });
-      if (this.iteration % 60 == 0 || this.iteration == this.iterationLimit) {
+      if (
+        this.iteration == 1 ||
+        this.iteration % 60 == 0 ||
+        this.iteration == this.iterationLimit
+      ) {
         this.computeRange(renderer);
+      }
+      if (this.callback) {
+        this.callback(this.iteration);
       }
     }
   }
@@ -31,12 +39,11 @@ export class Pipeline {
     return this.lastStage().getOutputHeightmap();
   }
 
-  private range: [number, number] = [0, 1];
-  reset() {
-    this.iteration = 0;
-    this.range = [0, 1];
+  getSize() {
+    return this.size;
   }
 
+  private range: [number, number] = [0, 1];
   private computeRange(renderer: WebGLRenderer) {
     const out = this.lastStage().getPixels(renderer);
     if (!out) {
@@ -72,5 +79,12 @@ export class Pipeline {
 
   dispose() {
     this.stages.forEach((s) => s.dispose());
+  }
+
+  start(iterationCount: number, callback: (iteration: number) => void) {
+    this.iteration = 0;
+    this.iterationLimit = iterationCount;
+    this.callback = callback;
+    this.range = [0, 1];
   }
 }
