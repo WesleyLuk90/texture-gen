@@ -6,7 +6,7 @@ import {
   ShaderMaterial,
   Texture,
   WebGLRenderer,
-  WebGLRenderTarget
+  WebGLRenderTarget,
 } from "three";
 import { EXRExporter } from "three/examples/jsm/Addons.js";
 import { createUnitPlane } from "./Geometry";
@@ -17,7 +17,7 @@ import renderFragmentShaderSource from "./render-fragment.glsl?raw";
 import vertexShaderSource from "./vertex.glsl?raw";
 
 export class Renderer {
-  private renderer = new WebGLRenderer();
+  private renderer = new WebGLRenderer({});
   private camera = new OrthographicCamera(0, 1, 1, 0, -1, 1);
 
   private scene = new Scene();

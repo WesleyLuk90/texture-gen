@@ -88,23 +88,29 @@ export class PipelineFactory {
     if (indexes == null) {
       throw new Error("Indexes was null");
     }
-    const uvs = checkNotNull(mesh.geometry.attributes.uv.array);
+    const originalUVs = checkNotNull(mesh.geometry.attributes.uv.array);
 
-    const vertexCount = uvs.length / 2;
+    const vertexCount = originalUVs.length / 2;
     const positions = new Float32Array(vertexCount * 3);
     const normals = new Float32Array(vertexCount * 3);
+    const uvs = new Float32Array(vertexCount * 2);
     for (let i = 0; i < vertexCount; i++) {
-      positions[i * 3] = uvs[i * 2];
-      positions[i * 3 + 1] = uvs[i * 2 + 1];
+      positions[i * 3] = originalUVs[i * 2];
+      positions[i * 3 + 1] = 1 - originalUVs[i * 2 + 1];
       positions[i * 3 + 2] = 0;
       normals[i * 3] = 0;
       normals[i * 3 + 1] = 0;
       normals[i * 3 + 2] = 1;
+      uvs[i * 2] = originalUVs[i * 2];
+      uvs[i * 2 + 1] = 1 - originalUVs[i * 2 + 1];
     }
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
     geometry.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indexes);
+    console.log(
+      `Vertex count ${vertexCount}, triangle count ${indexes.array.length / 3}`
+    );
     return geometry;
   }
 }
