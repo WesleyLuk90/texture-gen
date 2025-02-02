@@ -1,6 +1,7 @@
 import {
   BufferGeometry,
   Color,
+  DoubleSide,
   FloatType,
   Mesh,
   NormalBufferAttributes,
@@ -9,7 +10,7 @@ import {
   ShaderMaterial,
   Texture,
   WebGLRenderer,
-  WebGLRenderTarget
+  WebGLRenderTarget,
 } from "three";
 import { createUnitPlane } from "./Geometry";
 import heightmapFragmentSource from "./heightmap-fragment.glsl?raw";
@@ -22,7 +23,7 @@ export class HeightmapRenderStage {
   private outputHeightmap: WebGLRenderTarget<Texture>;
   private material: ShaderMaterial;
 
-  constructor(normalMap: Texture) {
+  constructor(normalMap: Texture, geometry: BufferGeometry | null) {
     const size = getTextureSize(normalMap);
     this.material = new ShaderMaterial({
       uniforms: {
@@ -38,8 +39,13 @@ export class HeightmapRenderStage {
       },
       vertexShader: vertexShaderSource,
       fragmentShader: heightmapFragmentSource,
+      side: DoubleSide,
     });
-    this.mesh = createUnitPlane(this.material);
+    if (geometry != null) {
+      this.mesh = new Mesh(geometry, this.material);
+    } else {
+      this.mesh = createUnitPlane(this.material);
+    }
     this.scene.add(this.mesh);
 
     this.outputHeightmap = new WebGLRenderTarget(size.x, size.y, {
