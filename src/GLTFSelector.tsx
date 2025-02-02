@@ -1,10 +1,6 @@
 import { GLTF, GLTFLoader } from "three/examples/jsm/Addons.js";
 
-export function GLTFSelector({
-  onSelect,
-}: {
-  onSelect: (gltf: GLTF) => void;
-}) {
+export function GLTFSelector({ onSelect }: { onSelect: (gltf: GLTF) => void }) {
   function onSelectFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.item(0);
     if (!file) {
@@ -13,15 +9,20 @@ export function GLTFSelector({
     event.target.value = "";
     const loader = new GLTFLoader();
     const url = URL.createObjectURL(file);
-    loader.load(url, (gltf => {
-      onSelect(gltf)
-    }), undefined, err => console.error(err))
+    loader.load(
+      url,
+      (gltf) => {
+        onSelect(gltf);
+      },
+      undefined,
+      (err) => console.error(err)
+    );
   }
 
   return (
     <div>
       GLTF:
-      <input type="file" onChange={onSelectFile} />
+      <input type="file" onChange={onSelectFile} accept=".gltf,.glb" />
     </div>
   );
 }

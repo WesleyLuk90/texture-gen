@@ -38,7 +38,7 @@ function App() {
   }, []);
 
   function onSelectImage(texture: Texture) {
-    getRenderer().load(texture);
+    getRenderer().loadFromTexture(texture);
   }
 
   function onSelectGLTF(gltf: GLTF) {
@@ -49,7 +49,7 @@ function App() {
       throw new Error("Failed to find mesh in object");
     }
     const mesh = children[index] as Mesh;
-    getRenderer().loadGLTF(mesh);
+    getRenderer().loadFromMesh(mesh);
   }
   function run() {
     getRenderer().run(wantedIterationCount, updateIterationCount);

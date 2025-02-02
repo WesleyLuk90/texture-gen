@@ -16,37 +16,36 @@ import heightmapFragmentSource from "./heightmap-fragment.glsl?raw";
 import { getTextureSize } from "./Textures";
 import vertexShaderSource from "./vertex.glsl?raw";
 export class HeightmapRenderStage {
-  private material = new ShaderMaterial({
-    uniforms: {
-      normalMap: {
-        value: null,
-      },
-      baseHeightmap: {
-        value: null,
-      },
-      width: { value: 0 },
-      height: { value: 0 },
-    },
-    vertexShader: vertexShaderSource,
-    fragmentShader: heightmapFragmentSource,
-  });
   private scene = new Scene();
   private camera = new OrthographicCamera(0, 1, 1, 0, -1, 1);
   private mesh: Mesh;
   private outputHeightmap: WebGLRenderTarget<Texture>;
+  private material: ShaderMaterial;
 
   constructor(normalMap: Texture) {
+    const size = getTextureSize(normalMap);
+    this.material = new ShaderMaterial({
+      uniforms: {
+        normalMap: {
+          value: normalMap,
+        },
+        baseHeightmap: {
+          value: null,
+        },
+        width: { value: size.x },
+        height: { value: size.y },
+        flipNormalY: { value: !normalMap.flipY },
+      },
+      vertexShader: vertexShaderSource,
+      fragmentShader: heightmapFragmentSource,
+    });
     this.mesh = createUnitPlane(this.material);
     this.scene.add(this.mesh);
 
-    const size = getTextureSize(normalMap);
     this.outputHeightmap = new WebGLRenderTarget(size.x, size.y, {
       type: FloatType,
       depthBuffer: false,
     });
-    this.material.uniforms.width.value = size.x;
-    this.material.uniforms.height.value = size.y;
-    this.material.uniforms.normalMap.value = normalMap;
   }
 
   setSourceHeightmap(texture: Texture) {

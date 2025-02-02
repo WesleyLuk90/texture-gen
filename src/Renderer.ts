@@ -13,6 +13,7 @@ import {
 } from "three";
 import { EXRExporter } from "three/examples/jsm/Addons.js";
 import { createUnitPlane } from "./Geometry";
+import { checkNotNull } from "./Nullable";
 import { Pipeline } from "./Pipeline";
 import { PipelineFactory } from "./PipelineFactory";
 import renderFragmentShaderSource from "./render-fragment.glsl?raw";
@@ -74,7 +75,7 @@ export class Renderer {
   }
 
   private pipeline?: Pipeline;
-  load(normalTexture: Texture) {
+  loadFromTexture(normalTexture: Texture) {
     const size = getTextureSize(normalTexture);
     this.pipeline = this.factory.fromNormalMap(normalTexture);
     this.renderer.setSize(size.x, size.y);
@@ -85,32 +86,7 @@ export class Renderer {
       this.pipeline.getOutputTexture().texture;
     this.material.needsUpdate = true;
   }
-
-  run(iterationCount: number, callback: (iteration: number) => void) {
-    this.pipeline?.start(iterationCount, callback);
-  }
-
-  async getEXRData() {
-    if (!this.pipeline) {
-      throw new Error("No pipeline loaded");
-    }
-    const size = this.pipeline.getSize();
-    const heightmapOut = new WebGLRenderTarget(size.x, size.y, {
-      type: FloatType,
-      depthBuffer: false,
-    });
-    this.renderer.setRenderTarget(heightmapOut);
-    this.renderer.render(this.scene, this.camera);
-    const exporter = new EXRExporter();
-    const exrData = await exporter.parse(this.renderer, heightmapOut, {
-      type: FloatType,
-    });
-    heightmapOut.dispose();
-    this.renderer.setRenderTarget(null);
-    return exrData;
-  }
-
-  loadGLTF(mesh: Mesh) {
+  loadFromMesh(mesh: Mesh) {
     const material: MeshStandardMaterial = (
       Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
     ) as MeshStandardMaterial;
@@ -161,7 +137,7 @@ export class Renderer {
     // const uvMesh = this.toUVMesh(mesh);
     // this.buffer1.setMesh(uvMesh);
     // this.buffer2.setMesh(uvMesh);
-    // this.load(material.normalMap);
+    this.loadFromTexture(checkNotNull(material.normalMap));
   }
 
   toUVMesh(mesh: Mesh): BufferGeometry {
@@ -176,6 +152,30 @@ export class Renderer {
     geometry.setAttribute("uvs", new Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indexes);
     return geometry;
+  }
+
+  run(iterationCount: number, callback: (iteration: number) => void) {
+    this.pipeline?.start(iterationCount, callback);
+  }
+
+  async getEXRData() {
+    if (!this.pipeline) {
+      throw new Error("No pipeline loaded");
+    }
+    const size = this.pipeline.getSize();
+    const heightmapOut = new WebGLRenderTarget(size.x, size.y, {
+      type: FloatType,
+      depthBuffer: false,
+    });
+    this.renderer.setRenderTarget(heightmapOut);
+    this.renderer.render(this.scene, this.camera);
+    const exporter = new EXRExporter();
+    const exrData = await exporter.parse(this.renderer, heightmapOut, {
+      type: FloatType,
+    });
+    heightmapOut.dispose();
+    this.renderer.setRenderTarget(null);
+    return exrData;
   }
 }
 

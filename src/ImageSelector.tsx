@@ -20,7 +20,7 @@ export function ImageSelector({
   return (
     <div>
       Normal Map:
-      <input type="file" onChange={onSelectFile} />
+      <input type="file" onChange={onSelectFile} accept=".png" />
     </div>
   );
 }

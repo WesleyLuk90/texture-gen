@@ -3,9 +3,18 @@ uniform sampler2D baseHeightmap;
 uniform float width;
 uniform float height;
 varying vec2 vUv;
+uniform bool flipNormalY;
+
+vec2 maybeFlipY(vec2 pos) {
+    if(flipNormalY) {
+        return vec2(pos.x, 1.0 - pos.y);
+    } else {
+        return pos;
+    }
+}
 
 float xHeightDiff(float sign, vec2 pos) {
-    vec4 color = texture2D(normalMap, pos);
+    vec4 color = texture2D(normalMap, maybeFlipY(pos));
     float base = texture2D(baseHeightmap, pos).r;
     float x = color.r * 2.0 - 1.0;
     float y = color.g * 2.0 - 1.0;
@@ -13,7 +22,7 @@ float xHeightDiff(float sign, vec2 pos) {
     return base + sign * x / z;
 }
 float yHeightDiff(float sign, vec2 pos) {
-    vec4 color = texture2D(normalMap, pos);
+    vec4 color = texture2D(normalMap, maybeFlipY(pos));
     float base = texture2D(baseHeightmap, pos).r;
     float x = color.r * 2.0 - 1.0;
     float y = color.g * 2.0 - 1.0;
