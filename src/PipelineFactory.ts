@@ -4,6 +4,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   Texture,
+  TypedArray,
 } from "three";
 import { HeightmapRenderStage } from "./HeightmapRenderStage";
 import { checkNotNull } from "./Nullable";
@@ -53,33 +54,63 @@ export class PipelineFactory {
       }
       return positions.slice(index * 3, index * 3 + 3).join(",");
     }
+    this.findOneSided(indexes);
     for (let i = 0; i < triangleCount; i++) {
       const ai = indexes[i * 3];
       const bi = indexes[i * 3 + 1];
       const ci = indexes[i * 3 + 2];
-      const a = getVertex(ai);
-      const b = getVertex(bi);
-      const c = getVertex(ci);
-      const ab = toEdge(a, b);
-      const bc = toEdge(b, c);
-      const ac = toEdge(a, c);
-      edgesCount.set(ab, (edgesCount.get(ab) ?? 0) + 1);
-      edgesCount.set(bc, (edgesCount.get(bc) ?? 0) + 1);
-      edgesCount.set(ac, (edgesCount.get(ac) ?? 0) + 1);
+      // const a = getVertex(ai);
+      // const b = getVertex(bi);
+      // const c = getVertex(ci);
+      // const ab = toEdge(a, b);
+      // const bc = toEdge(b, c);
+      // const ac = toEdge(a, c);
+      // edgesCount.set(ab, (edgesCount.get(ab) ?? 0) + 1);
+      // edgesCount.set(bc, (edgesCount.get(bc) ?? 0) + 1);
+      // edgesCount.set(ac, (edgesCount.get(ac) ?? 0) + 1);
     }
 
-    console.log(`Unique edges ${edgesCount.size}`);
-    const adjacentCount = new Map<number, number>();
-    Array.from(edgesCount.entries()).forEach((entry) => {
-      adjacentCount.set(entry[1], (adjacentCount.get(entry[1]) ?? 0) + 1);
-      if (entry[1] > 10) {
-        console.log(entry);
-      }
-    });
-    console.log(adjacentCount);
+    // console.log(`Unique edges ${edgesCount.size}`);
+    // const adjacentCount = new Map<number, number>();
+    // Array.from(edgesCount.entries()).forEach((entry) => {
+    //   adjacentCount.set(entry[1], (adjacentCount.get(entry[1]) ?? 0) + 1);
+    //   if (entry[1] > 10) {
+    //     console.log(entry);
+    //   }
+    // });
+    // console.log(adjacentCount);
 
     const uvMesh = this.toUVMesh(mesh);
     return this.createPipeline(checkNotNull(material.normalMap), uvMesh);
+  }
+
+  private findOneSided(indexes: TypedArray) {
+    let counts = new Map<string, number>();
+    for (let i = 0; i < indexes.length / 3; i++) {
+      const a = indexes[3 * i];
+      const b = indexes[3 * i + 1];
+      const c = indexes[3 * i + 2];
+      const ab = this.createEdge(a, b);
+      const bc = this.createEdge(b, c);
+      const ca = this.createEdge(c, a);
+      counts.set(ab, (counts.get(ab) ?? 0) + 1);
+      counts.set(bc, (counts.get(bc) ?? 0) + 1);
+      counts.set(ca, (counts.get(ca) ?? 0) + 1);
+    }
+    console.log(`Total edges ${counts.size}`);
+    const byCount = new Map<number, number>();
+    counts.forEach((count, key) => {
+      byCount.set(count, (byCount.get(count) ?? 0) + 1);
+    });
+    console.log(`Counts ${Array.from(byCount.entries())}`);
+  }
+
+  private createEdge(a: number, b: number) {
+    if (a < b) {
+      return `${a},${b}`;
+    } else {
+      return `${b},${a}`;
+    }
   }
 
   toUVMesh(mesh: Mesh): BufferGeometry {
