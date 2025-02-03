@@ -5,6 +5,8 @@ import {
   MeshStandardMaterial,
   Texture,
   TypedArray,
+  Vector2,
+  Vector3,
 } from "three";
 import { HeightmapRenderStage } from "./HeightmapRenderStage";
 import { checkNotNull } from "./Nullable";
@@ -36,81 +38,65 @@ export class PipelineFactory {
       Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
     ) as MeshStandardMaterial;
     const geometry = mesh.geometry;
-    console.log(material);
-    console.log(geometry);
     const indexes = geometry.index?.array;
     if (indexes == null) {
       throw new Error("Expected indexes");
     }
 
     const positions = geometry.attributes.position.array;
-    const triangleCount = indexes?.length / 3;
-    console.log("Triangle count", triangleCount);
     console.log("Vertex count", positions.length / 3);
-    const edgesCount = new Map<string, number>();
-    function getVertex(index: number) {
-      if (index * 3 > positions.length) {
-        throw new Error(`Invalid index ${index}`);
-      }
-      return positions.slice(index * 3, index * 3 + 3).join(",");
-    }
-    this.findOneSided(indexes);
-    for (let i = 0; i < triangleCount; i++) {
-      const ai = indexes[i * 3];
-      const bi = indexes[i * 3 + 1];
-      const ci = indexes[i * 3 + 2];
-      // const a = getVertex(ai);
-      // const b = getVertex(bi);
-      // const c = getVertex(ci);
-      // const ab = toEdge(a, b);
-      // const bc = toEdge(b, c);
-      // const ac = toEdge(a, c);
-      // edgesCount.set(ab, (edgesCount.get(ab) ?? 0) + 1);
-      // edgesCount.set(bc, (edgesCount.get(bc) ?? 0) + 1);
-      // edgesCount.set(ac, (edgesCount.get(ac) ?? 0) + 1);
-    }
+    const seams = this.findSeams(
+      positions,
+      indexes,
+      geometry.attributes.uv.array
+    );
 
-    // console.log(`Unique edges ${edgesCount.size}`);
-    // const adjacentCount = new Map<number, number>();
-    // Array.from(edgesCount.entries()).forEach((entry) => {
-    //   adjacentCount.set(entry[1], (adjacentCount.get(entry[1]) ?? 0) + 1);
-    //   if (entry[1] > 10) {
-    //     console.log(entry);
-    //   }
-    // });
-    // console.log(adjacentCount);
+    console.log(`Found ${seams.length} seams`);
 
     const uvMesh = this.toUVMesh(mesh);
     return this.createPipeline(checkNotNull(material.normalMap), uvMesh);
   }
+  findSeams(positions: TypedArray, indexes: TypedArray, uv: TypedArray) {
+    const triangleCount = indexes.length / 3;
+    const edges = new Map<string, Edge[]>();
+    const seams: [Edge, Edge][] = [];
 
-  private findOneSided(indexes: TypedArray) {
-    let counts = new Map<string, number>();
-    for (let i = 0; i < indexes.length / 3; i++) {
-      const a = indexes[3 * i];
-      const b = indexes[3 * i + 1];
-      const c = indexes[3 * i + 2];
-      const ab = this.createEdge(a, b);
-      const bc = this.createEdge(b, c);
-      const ca = this.createEdge(c, a);
-      counts.set(ab, (counts.get(ab) ?? 0) + 1);
-      counts.set(bc, (counts.get(bc) ?? 0) + 1);
-      counts.set(ca, (counts.get(ca) ?? 0) + 1);
+    function addEdge(edge: Edge) {
+      const key = edge.hashCode();
+      const edgeList = edges.get(key) ?? [];
+      if (edgeList.length > 10) {
+        console.error(edgeList);
+        throw new Error("Unexpected edge list");
+      }
+      edgeList.forEach((existing) => {
+        if (existing.isSeam(edge)) {
+          seams.push([existing, edge]);
+        }
+      });
+      edgeList.push(edge);
+      edges.set(key, edgeList);
     }
-    console.log(`Total edges ${counts.size}`);
-    const byCount = new Map<number, number>();
-    counts.forEach((count, key) => {
-      byCount.set(count, (byCount.get(count) ?? 0) + 1);
-    });
-    console.log(`Counts ${Array.from(byCount.entries())}`);
-  }
-
-  private createEdge(a: number, b: number) {
-    if (a < b) {
-      return `${a},${b}`;
-    } else {
-      return `${b},${a}`;
+    for (let triangle = 0; triangle < triangleCount; triangle++) {
+      const aIndex = indexes[3 * triangle];
+      const bIndex = indexes[3 * triangle + 1];
+      const cIndex = indexes[3 * triangle + 2];
+      const a = new Vector3().fromArray(
+        positions.slice(aIndex * 3, aIndex * 3 + 3)
+      );
+      const b = new Vector3().fromArray(
+        positions.slice(bIndex * 3, bIndex * 3 + 3)
+      );
+      const c = new Vector3().fromArray(
+        positions.slice(cIndex * 3, cIndex * 3 + 3)
+      );
+      const uvA = new Vector2().fromArray(uv.slice(aIndex * 2, aIndex * 2 + 2));
+      const uvB = new Vector2().fromArray(uv.slice(bIndex * 2, bIndex * 2 + 2));
+      const uvC = new Vector2().fromArray(uv.slice(cIndex * 2, cIndex * 2 + 2));
+      addEdge(new Edge(a, b, uvA, uvB));
+      addEdge(new Edge(b, c, uvB, uvC));
+      addEdge(new Edge(c, a, uvC, uvA));
     }
+    return seams;
   }
 
   toUVMesh(mesh: Mesh): BufferGeometry {
@@ -146,10 +132,38 @@ export class PipelineFactory {
   }
 }
 
-function toEdge(a: string, b: string): string {
-  if (a < b) {
-    return `${a}:${b}`;
-  } else {
-    return `${b}:${a}`;
+class Edge {
+  constructor(
+    readonly a: Vector3,
+    readonly b: Vector3,
+    readonly uvA: Vector2,
+    readonly uvB: Vector2
+  ) {
+    if (isNaN(a.x) || isNaN(a.y) || isNaN(a.z)) {
+      throw new Error("Invalid vertex");
+    }
+  }
+
+  hashCode() {
+    if (
+      this.a.x < this.b.x ||
+      (this.a.x == this.b.x && this.a.y < this.b.y) ||
+      (this.a.x == this.b.x && this.a.y == this.b.y && this.a.z < this.b.z)
+    ) {
+      return `${this.a.toArray()}:${this.b.toArray()}`;
+    } else {
+      return `${this.b.toArray()}:${this.a.toArray()}`;
+    }
+  }
+
+  isSeam(other: Edge) {
+    return (
+      (this.a.equals(other.a) &&
+        this.b.equals(other.b) &&
+        (!this.uvA.equals(other.uvA) || !this.uvB.equals(other.uvB))) ||
+      (this.a.equals(other.b) &&
+        this.b.equals(other.a) &&
+        (!this.uvA.equals(other.uvB) || !this.uvB.equals(other.uvA)))
+    );
   }
 }
