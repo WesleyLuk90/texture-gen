@@ -90,50 +90,49 @@ export class PipelineFactory {
       const uvB = new Vector2().fromArray(uv.slice(bIndex * 2, bIndex * 2 + 2));
       const uvC = new Vector2().fromArray(uv.slice(cIndex * 2, cIndex * 2 + 2));
       addEdge(new Edge(a, b, uvA, uvB, new Vector3(aIndex, bIndex, cIndex)));
-      addEdge(new Edge(b, c, uvB, uvC, new Vector3(aIndex, bIndex, cIndex)));
-      addEdge(new Edge(c, a, uvC, uvA, new Vector3(aIndex, bIndex, cIndex)));
+      addEdge(new Edge(b, c, uvB, uvC, new Vector3(bIndex, cIndex, aIndex)));
+      addEdge(new Edge(c, a, uvC, uvA, new Vector3(aIndex, cIndex, bIndex)));
     }
     return seams;
   }
 
   toUVMesh(mesh: Mesh, seams: [Edge, Edge][]): BufferGeometry {
     const geometry = new BufferGeometry();
-    const indexData = new Uint16Array(seams.length * 3 * 2);
-    seams.forEach(([e1, e2], i) => {
-      indexData[i * 6] = e1.triangle.x;
-      indexData[i * 6 + 1] = e1.triangle.y;
-      indexData[i * 6 + 2] = e1.triangle.z;
-      indexData[i * 6 + 3] = e2.triangle.x;
-      indexData[i * 6 + 4] = e2.triangle.y;
-      indexData[i * 6 + 5] = e2.triangle.z;
-    });
-    // const indexes = mesh.geometry.getIndex();
-    // if (indexes == null) {
-    //   throw new Error("Indexes was null");
-    // }
-    const indexes = new BufferAttribute(indexData, 1);
+    let i =0;
+    const positions = new Float32Array(seams.length * 3 * 2 * 6);
+    const normals = new Float32Array(seams.length * 3 * 2 * 6);
+    const uvs = new Float32Array(seams.length * 2 * 2 * 6);
     const originalUVs = checkNotNull(mesh.geometry.attributes.uv.array);
-
-    const vertexCount = originalUVs.length / 2;
-    const positions = new Float32Array(vertexCount * 3);
-    const normals = new Float32Array(vertexCount * 3);
-    const uvs = new Float32Array(vertexCount * 2);
-    for (let i = 0; i < vertexCount; i++) {
-      positions[i * 3] = originalUVs[i * 2];
-      positions[i * 3 + 1] = 1 - originalUVs[i * 2 + 1];
-      positions[i * 3 + 2] = 0;
-      normals[i * 3] = 0;
-      normals[i * 3 + 1] = 0;
-      normals[i * 3 + 2] = 1;
-      uvs[i * 2] = originalUVs[i * 2];
-      uvs[i * 2 + 1] = 1 - originalUVs[i * 2 + 1];
+    function addTriangle(originalIndexes: Vector3) {
+      const [a, b, c] = originalIndexes.toArray();
+      const uvA = new Vector2().fromArray(originalUVs.slice(a * 2, a * 2 + 2));
+      const uvB = new Vector2().fromArray(originalUVs.slice(b * 2, a * 2 + 2));
+      const uvC = new Vector2().fromArray(originalUVs.slice(c * 2, a * 2 + 2));
+      const ba = uvB.sub(uvA);
+      const perpendicular = new Vector2(ba.y, ba.x).normalize();
+      const cb = uvC.sub(uvB);
+      if (cb.dot(perpendicular) < 0) {
+        perpendicular.negate();
+      }
+      positions[i*3] = uvA.x;
+      positions[i*3+1] = uvA.y;
+      positions[i*3+2] = 0;
     }
-    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
-    geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
-    geometry.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
-    geometry.setIndex(indexes);
-    console.log(
-      `Vertex count ${vertexCount}, triangle count ${indexes.array.length / 3}`
+    seams.forEach(([e1, e2]) => {
+      addTriangle(e1.triangle);
+      addTriangle(e2.triangle);
+    });
+    geometry.setAttribute(
+      "position",
+      new Float32BufferAttribute([0, 0, 0, 0, 0.5, 0, 0.5, 0, 0], 3)
+    );
+    geometry.setAttribute(
+      "normal",
+      new Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3)
+    );
+    geometry.setAttribute(
+      "uv",
+      new Float32BufferAttribute([1, 1, 1, 1, 1, 1], 2)
     );
     return geometry;
   }
