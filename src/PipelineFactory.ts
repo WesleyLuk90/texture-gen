@@ -111,7 +111,7 @@ export class PipelineFactory {
     // if (indexes == null) {
     //   throw new Error("Indexes was null");
     // }
-    const indexes = new BufferAttribute(indexData, 3);
+    const indexes = new BufferAttribute(indexData, 1);
     const originalUVs = checkNotNull(mesh.geometry.attributes.uv.array);
 
     const vertexCount = originalUVs.length / 2;
