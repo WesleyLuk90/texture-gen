@@ -1,4 +1,5 @@
 import {
+  BufferAttribute,
   BufferGeometry,
   Float32BufferAttribute,
   Mesh,
@@ -53,7 +54,7 @@ export class PipelineFactory {
 
     console.log(`Found ${seams.length} seams`);
 
-    const uvMesh = this.toUVMesh(mesh);
+    const uvMesh = this.toUVMesh(mesh, seams);
     return this.createPipeline(checkNotNull(material.normalMap), uvMesh);
   }
   findSeams(positions: TypedArray, indexes: TypedArray, uv: TypedArray) {
@@ -64,10 +65,6 @@ export class PipelineFactory {
     function addEdge(edge: Edge) {
       const key = edge.hashCode();
       const edgeList = edges.get(key) ?? [];
-      if (edgeList.length > 10) {
-        console.error(edgeList);
-        throw new Error("Unexpected edge list");
-      }
       edgeList.forEach((existing) => {
         if (existing.isSeam(edge)) {
           seams.push([existing, edge]);
@@ -92,19 +89,29 @@ export class PipelineFactory {
       const uvA = new Vector2().fromArray(uv.slice(aIndex * 2, aIndex * 2 + 2));
       const uvB = new Vector2().fromArray(uv.slice(bIndex * 2, bIndex * 2 + 2));
       const uvC = new Vector2().fromArray(uv.slice(cIndex * 2, cIndex * 2 + 2));
-      addEdge(new Edge(a, b, uvA, uvB));
-      addEdge(new Edge(b, c, uvB, uvC));
-      addEdge(new Edge(c, a, uvC, uvA));
+      addEdge(new Edge(a, b, uvA, uvB, new Vector3(aIndex, bIndex, cIndex)));
+      addEdge(new Edge(b, c, uvB, uvC, new Vector3(aIndex, bIndex, cIndex)));
+      addEdge(new Edge(c, a, uvC, uvA, new Vector3(aIndex, bIndex, cIndex)));
     }
     return seams;
   }
 
-  toUVMesh(mesh: Mesh): BufferGeometry {
+  toUVMesh(mesh: Mesh, seams: [Edge, Edge][]): BufferGeometry {
     const geometry = new BufferGeometry();
-    const indexes = mesh.geometry.getIndex();
-    if (indexes == null) {
-      throw new Error("Indexes was null");
-    }
+    const indexData = new Uint16Array(seams.length * 3 * 2);
+    seams.forEach(([e1, e2], i) => {
+      indexData[i * 6] = e1.triangle.x;
+      indexData[i * 6 + 1] = e1.triangle.y;
+      indexData[i * 6 + 2] = e1.triangle.z;
+      indexData[i * 6 + 3] = e2.triangle.x;
+      indexData[i * 6 + 4] = e2.triangle.y;
+      indexData[i * 6 + 5] = e2.triangle.z;
+    });
+    // const indexes = mesh.geometry.getIndex();
+    // if (indexes == null) {
+    //   throw new Error("Indexes was null");
+    // }
+    const indexes = new BufferAttribute(indexData, 3);
     const originalUVs = checkNotNull(mesh.geometry.attributes.uv.array);
 
     const vertexCount = originalUVs.length / 2;
@@ -137,7 +144,8 @@ class Edge {
     readonly a: Vector3,
     readonly b: Vector3,
     readonly uvA: Vector2,
-    readonly uvB: Vector2
+    readonly uvB: Vector2,
+    readonly triangle: Vector3
   ) {
     if (isNaN(a.x) || isNaN(a.y) || isNaN(a.z)) {
       throw new Error("Invalid vertex");
@@ -145,14 +153,12 @@ class Edge {
   }
 
   hashCode() {
-    if (
-      this.a.x < this.b.x ||
-      (this.a.x == this.b.x && this.a.y < this.b.y) ||
-      (this.a.x == this.b.x && this.a.y == this.b.y && this.a.z < this.b.z)
-    ) {
-      return `${this.a.toArray()}:${this.b.toArray()}`;
+    const a = `${this.a.x},${this.a.y},${this.a.z}`;
+    const b = `${this.b.x},${this.b.y},${this.b.z}`;
+    if (a < b) {
+      return `${a}:${b}`;
     } else {
-      return `${this.b.toArray()}:${this.a.toArray()}`;
+      return `${b}:${a}`;
     }
   }
 
