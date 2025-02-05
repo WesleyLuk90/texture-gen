@@ -148,7 +148,6 @@ export class MeshBuilder {
 
     const cb = new Vector3().subVectors(uvC, uvB);
     const ab = new Vector3().subVectors(uvA, uvB);
-    
     return new Vector2().copy(uvA);
   }
 
