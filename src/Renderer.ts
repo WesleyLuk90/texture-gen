@@ -13,8 +13,8 @@ import { createUnitPlane } from "./Geometry";
 import { checkNotNull } from "./Nullable";
 import { Pipeline } from "./Pipeline";
 import { PipelineFactory } from "./PipelineFactory";
-import renderFragmentShaderSource from "./render-fragment.glsl?raw";
-import vertexShaderSource from "./vertex.glsl?raw";
+import renderFragmentShaderSource from "./shaders/render-fragment.glsl?raw";
+import vertexShaderSource from "./shaders/render-vertex.glsl?raw";
 
 export class Renderer {
   private renderer = new WebGLRenderer({});

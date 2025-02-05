@@ -13,9 +13,9 @@ import {
   WebGLRenderTarget,
 } from "three";
 import { createUnitPlane } from "./Geometry";
-import heightmapFragmentSource from "./heightmap-fragment.glsl?raw";
+import heightmapFragmentSource from "./shaders/heightmap-fragment.glsl?raw";
+import vertexShaderSource from "./shaders/heightmap-vertex.glsl?raw";
 import { getTextureSize } from "./Textures";
-import vertexShaderSource from "./vertex.glsl?raw";
 export class HeightmapRenderStage {
   private scene = new Scene();
   private camera = new OrthographicCamera(0, 1, 1, 0, -1, 1);
