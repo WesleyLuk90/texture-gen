@@ -37,5 +37,4 @@ void main() {
         yHeightDiff(1.0, vec2(vUv.x, vUv.y + 1.0 / height)));
     height /= 4.0;
     gl_FragColor = vec4(height, height, height, 1.0);
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
 }

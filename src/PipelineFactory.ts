@@ -99,16 +99,18 @@ export class PipelineFactory {
   toUVMesh(mesh: Mesh, seams: [Edge, Edge][]): BufferGeometry {
     const geometry = new BufferGeometry();
     let i = 0;
+    const triangleCount = seams.length * 2 * 2 + 2;
+    const vertexCount = triangleCount * 3;
     const positions = new Float32BufferAttribute(
-      new Float32Array(seams.length * 3 * 2 * 8),
+      new Float32Array(vertexCount * 3),
       3
     );
     const normals = new Float32BufferAttribute(
-      new Float32Array(seams.length * 3 * 2 * 8),
+      new Float32Array(vertexCount * 3),
       3
     );
     const uvs = new Float32BufferAttribute(
-      new Float32Array(seams.length * 2 * 2 * 8),
+      new Float32Array(vertexCount * 2),
       2
     );
     const originalUVs = checkNotNull(
@@ -141,7 +143,7 @@ export class PipelineFactory {
       const ab = new Vector3().subVectors(uvA, uvB);
       const perpendicular = new Vector3(ab.y, -ab.x, 0)
         .normalize()
-        .multiplyScalar(1 / 128);
+        .multiplyScalar(1 / 1024);
       const cb = new Vector3().subVectors(uvC, uvB);
       if (cb.dot(perpendicular) < 0) {
         perpendicular.negate();
@@ -160,6 +162,15 @@ export class PipelineFactory {
     geometry.setAttribute("position", positions);
     geometry.setAttribute("normal", normals);
     geometry.setAttribute("uv", uvs);
+    addRectangle([
+      new Vector3(0, 0, 0),
+      new Vector3(0, 1, 0),
+      new Vector3(1, 0, 0),
+      new Vector3(1, 1, 0),
+    ]);
+    if (i != vertexCount) {
+      throw new Error(`Final vertex count mismatch ${i} != ${vertexCount}`);
+    }
     return geometry;
   }
 }
