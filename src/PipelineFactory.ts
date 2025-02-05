@@ -129,9 +129,9 @@ export class PipelineFactory {
       edge: Vector2,
       oppositeEdge: Vector2
     ) {
-      positions.setXYZ(i, position.x, 1 - position.y, position.z);
+      positions.setXYZ(i, position.x, position.y, position.z);
       normals.setXYZ(i, 0, 0, 1);
-      uvs.setXY(i, uv.x, 1 - uv.y);
+      uvs.setXY(i, uv.x, uv.y);
       edges.setXY(i, edge.x, edge.y);
       oppositeEdges.setXY(i, oppositeEdge.x, oppositeEdge.y);
       i++;
@@ -162,17 +162,17 @@ export class PipelineFactory {
         );
       }
     }
+    function readUV(index: number) {
+      return new Vector3(
+        originalUVs.array[index * 2],
+        1 - originalUVs.array[index * 2 + 1] // Flip uv into coordinate
+      );
+    }
     function processTriangle(originalIndexes: Vector3) {
       const [a, b, c] = originalIndexes.toArray();
-      const uvA = new Vector3()
-        .fromArray(originalUVs.array.slice(a * 2, a * 2 + 2))
-        .setZ(0);
-      const uvB = new Vector3()
-        .fromArray(originalUVs.array.slice(b * 2, b * 2 + 2))
-        .setZ(0);
-      const uvC = new Vector3()
-        .fromArray(originalUVs.array.slice(c * 2, c * 2 + 2))
-        .setZ(0);
+      const uvA = readUV(a);
+      const uvB = readUV(b);
+      const uvC = readUV(c);
       const ab = new Vector3().subVectors(uvA, uvB);
       const perpendicular = new Vector3(ab.y, -ab.x, 0)
         .normalize()
@@ -194,10 +194,10 @@ export class PipelineFactory {
     }
     addRectangle(
       [
-        new Vector3(0, 1, 0),
         new Vector3(0, 0, 0),
-        new Vector3(1, 1, 0),
+        new Vector3(0, 1, 0),
         new Vector3(1, 0, 0),
+        new Vector3(1, 1, 0),
       ],
       new Vector2(),
       new Vector2()
