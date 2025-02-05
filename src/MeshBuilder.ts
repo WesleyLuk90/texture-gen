@@ -45,11 +45,13 @@ function findSeams(
 }
 export class MeshBuilder {
   private seams: [Edge, Edge][];
-    positions: Float32BufferAttribute;
-    normals: Float32BufferAttribute;
-    uvs: Float32BufferAttribute;
-    edges: Float32BufferAttribute;
-    oppositeEdges: Float32BufferAttribute;
+  positions: Float32BufferAttribute;
+  normals: Float32BufferAttribute;
+  uvs: Float32BufferAttribute;
+  edge1Positions: Float32BufferAttribute;
+  edge2Positions: Float32BufferAttribute;
+  edge1Rotation: Float32BufferAttribute;
+  edge2Rotation: Float32BufferAttribute;
 
   constructor(
     originalPositions: BufferAttribute,
@@ -73,13 +75,21 @@ export class MeshBuilder {
       3
     );
     this.uvs = new Float32BufferAttribute(new Float32Array(vertexCount * 2), 2);
-    this.edges = new Float32BufferAttribute(
+    this.edge1Positions = new Float32BufferAttribute(
       new Float32Array(vertexCount * 2),
       2
     );
-    this.oppositeEdges = new Float32BufferAttribute(
+    this.edge1Rotation = new Float32BufferAttribute(
+      new Float32Array(vertexCount),
+      1
+    );
+    this.edge2Positions = new Float32BufferAttribute(
       new Float32Array(vertexCount * 2),
       2
+    );
+    this.edge2Rotation = new Float32BufferAttribute(
+      new Float32Array(vertexCount),
+      1
     );
   }
 
@@ -88,13 +98,17 @@ export class MeshBuilder {
   private addVertex(
     position: Vector3,
     uv: Vector2,
-    edge: Vector2,
-    oppositeEdge: Vector2
+    edge1Position: Vector2,
+    edge1Rotation: number,
+    edge2Position: Vector2,
+    edge2Rotation: number
   ) {
     this.positions.setXYZ(this.i, position.x, position.y, position.z);
     this.uvs.setXY(this.i, uv.x, uv.y);
-    this.edges.setXY(this.i, edge.x, edge.y);
-    this.oppositeEdges.setXY(this.i, oppositeEdge.x, oppositeEdge.y);
+    this.edge1Positions.setXY(this.i, edge1Position.x, edge1Position.y);
+    this.edge1Rotation.setX(this.i, edge1Rotation);
+    this.edge2Positions.setXY(this.i, edge2Position.x, edge2Position.y);
+    this.edge2Rotation.setX(this.i, edge2Rotation);
     this.i++;
   }
 
@@ -132,7 +146,7 @@ export class MeshBuilder {
     );
   }
 
-  private  processTriangle(originalIndexes: Vector3) {
+  private processTriangle(originalIndexes: Vector3) {
     const [a, b, c] = originalIndexes.toArray();
     const uvA = this.readUV(a);
     const uvB = this.readUV(b);
@@ -169,18 +183,22 @@ export class MeshBuilder {
       new Vector2()
     );
     this.seams.forEach(([e1, e2]) => {
-        this.processTriangle(e1.triangle);
-        this.processTriangle(e2.triangle);
+      this.processTriangle(e1.triangle);
+      this.processTriangle(e2.triangle);
     });
 
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", this.positions);
     geometry.setAttribute("uv", this.uvs);
-    geometry.setAttribute("edge", this.edges);
-    geometry.setAttribute("oppositeEdge", this.oppositeEdges);
+    geometry.setAttribute("edge1Position", this.edge1Positions);
+    geometry.setAttribute("edge2Position", this.edge2Positions);
+    geometry.setAttribute("edge1Rotation", this.edge1Rotation);
+    geometry.setAttribute("edge2Rotation", this.edge2Rotation);
 
     if (this.i != this.positions.count) {
-      throw new Error(`Final vertex count mismatch ${this.i} != ${this.positions.count}`);
+      throw new Error(
+        `Final vertex count mismatch ${this.i} != ${this.positions.count}`
+      );
     }
     return geometry;
   }
