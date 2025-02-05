@@ -1,10 +1,10 @@
 import {
-    BufferAttribute,
-    BufferGeometry,
-    Float32BufferAttribute,
-    TypedArray,
-    Vector2,
-    Vector3,
+  BufferAttribute,
+  BufferGeometry,
+  Float32BufferAttribute,
+  TypedArray,
+  Vector2,
+  Vector3,
 } from "three";
 
 function findSeams(
@@ -95,46 +95,40 @@ export class MeshBuilder {
 
   private i = 0;
 
-  private addVertex(
-    position: Vector3,
-    uv: Vector2,
-    edge1Position: Vector2,
-    edge1Rotation: number,
-    edge2Position: Vector2,
-    edge2Rotation: number
-  ) {
+  private addVertex(position: Vector3, uv: Vector2, uvPair: UVPair | null) {
     this.positions.setXYZ(this.i, position.x, position.y, position.z);
     this.uvs.setXY(this.i, uv.x, uv.y);
-    this.edge1Positions.setXY(this.i, edge1Position.x, edge1Position.y);
-    this.edge1Rotation.setX(this.i, edge1Rotation);
-    this.edge2Positions.setXY(this.i, edge2Position.x, edge2Position.y);
-    this.edge2Rotation.setX(this.i, edge2Rotation);
+    this.edge1Positions.setXY(
+      this.i,
+      uvPair?.position1?.x ?? 0,
+      uvPair?.position1?.y ?? 0
+    );
+    this.edge1Rotation.setX(this.i, uvPair?.rotation1 ?? 0);
+    this.edge2Positions.setXY(
+      this.i,
+      uvPair?.position2?.x ?? 0,
+      uvPair?.position2?.y ?? 0
+    );
+    this.edge2Rotation.setX(this.i, uvPair?.rotation2 ?? 0);
     this.i++;
   }
 
-  private addRectangle(
-    vertices: Vector3[],
-    edge: Vector2,
-    oppositeEdge: Vector2
-  ) {
+  private addRectangle(vertices: Vector3[], uvPair: UVPair | null) {
     for (let start = 0; start < 2; start++) {
       this.addVertex(
         vertices[start + 0],
         new Vector2().copy(vertices[start + 0]),
-        edge,
-        oppositeEdge
+        uvPair
       );
       this.addVertex(
         vertices[start + 1],
         new Vector2().copy(vertices[start + 1]),
-        edge,
-        oppositeEdge
+        uvPair
       );
       this.addVertex(
         vertices[start + 2],
         new Vector2().copy(vertices[start + 2]),
-        edge,
-        oppositeEdge
+        uvPair
       );
     }
   }
@@ -146,7 +140,19 @@ export class MeshBuilder {
     );
   }
 
-  private processTriangle(originalIndexes: Vector3) {
+  private getUVBase(indexes: Vector3) {
+    const [a, b, c] = indexes.toArray();
+    const uvA = this.readUV(a);
+    const uvB = this.readUV(b);
+    const uvC = this.readUV(c);
+
+    const cb = new Vector3().subVectors(uvC, uvB);
+    const ab = new Vector3().subVectors(uvA, uvB);
+    
+    return new Vector2().copy(uvA);
+  }
+
+  private processTriangle(originalIndexes: Vector3, oppositeIndexes: Vector3) {
     const [a, b, c] = originalIndexes.toArray();
     const uvA = this.readUV(a);
     const uvB = this.readUV(b);
@@ -166,8 +172,12 @@ export class MeshBuilder {
         new Vector3().addVectors(uvA, perpendicular),
         new Vector3().addVectors(uvB, perpendicular),
       ],
-      new Vector2().copy(uvA),
-      new Vector2()
+      new UVPair(
+        this.getUVBase(originalIndexes),
+        0,
+        this.getUVBase(oppositeIndexes),
+        0
+      )
     );
   }
 
@@ -179,12 +189,11 @@ export class MeshBuilder {
         new Vector3(1, 0, 0),
         new Vector3(1, 1, 0),
       ],
-      new Vector2(),
-      new Vector2()
+      null
     );
     this.seams.forEach(([e1, e2]) => {
-      this.processTriangle(e1.triangle);
-      this.processTriangle(e2.triangle);
+      this.processTriangle(e1.triangle, e2.triangle);
+      this.processTriangle(e2.triangle, e1.triangle);
     });
 
     const geometry = new BufferGeometry();
@@ -202,6 +211,15 @@ export class MeshBuilder {
     }
     return geometry;
   }
+}
+
+class UVPair {
+  constructor(
+    readonly position1: Vector2,
+    readonly rotation1: number,
+    readonly position2: Vector2,
+    readonly rotation2: number
+  ) {}
 }
 
 class Edge {
