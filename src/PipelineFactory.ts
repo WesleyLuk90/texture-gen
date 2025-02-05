@@ -97,7 +97,6 @@ export class PipelineFactory {
   }
 
   toUVMesh(mesh: Mesh, seams: [Edge, Edge][]): BufferGeometry {
-    const geometry = new BufferGeometry();
     let i = 0;
     const triangleCount = seams.length * 2 * 2 + 2;
     const vertexCount = triangleCount * 3;
@@ -113,20 +112,54 @@ export class PipelineFactory {
       new Float32Array(vertexCount * 2),
       2
     );
+    const edges = new Float32BufferAttribute(
+      new Float32Array(vertexCount * 2),
+      2
+    );
+    const oppositeEdges = new Float32BufferAttribute(
+      new Float32Array(vertexCount * 2),
+      2
+    );
     const originalUVs = checkNotNull(
       mesh.geometry.attributes.uv
     ) as BufferAttribute;
-    function addVertex(position: Vector3, uv: Vector2) {
-      positions.setXYZ(i, position.x, position.y, position.z);
+    function addVertex(
+      position: Vector3,
+      uv: Vector2,
+      edge: Vector2,
+      oppositeEdge: Vector2
+    ) {
+      positions.setXYZ(i, position.x, 1 - position.y, position.z);
       normals.setXYZ(i, 0, 0, 1);
-      uvs.setXY(i, uv.x, uv.y);
+      uvs.setXY(i, uv.x, 1 - uv.y);
+      edges.setXY(i, edge.x, edge.y);
+      oppositeEdges.setXY(i, oppositeEdge.x, oppositeEdge.y);
       i++;
     }
-    function addRectangle(vertices: Vector3[]) {
+    function addRectangle(
+      vertices: Vector3[],
+      edge: Vector2,
+      oppositeEdge: Vector2
+    ) {
       for (let start = 0; start < 2; start++) {
-        addVertex(vertices[start + 0], new Vector2().copy(vertices[start + 0]));
-        addVertex(vertices[start + 1], new Vector2().copy(vertices[start + 1]));
-        addVertex(vertices[start + 2], new Vector2().copy(vertices[start + 2]));
+        addVertex(
+          vertices[start + 0],
+          new Vector2().copy(vertices[start + 0]),
+          edge,
+          oppositeEdge
+        );
+        addVertex(
+          vertices[start + 1],
+          new Vector2().copy(vertices[start + 1]),
+          edge,
+          oppositeEdge
+        );
+        addVertex(
+          vertices[start + 2],
+          new Vector2().copy(vertices[start + 2]),
+          edge,
+          oppositeEdge
+        );
       }
     }
     function processTriangle(originalIndexes: Vector3) {
@@ -143,31 +176,44 @@ export class PipelineFactory {
       const ab = new Vector3().subVectors(uvA, uvB);
       const perpendicular = new Vector3(ab.y, -ab.x, 0)
         .normalize()
-        .multiplyScalar(1 / 1024);
+        .multiplyScalar(1 / 2048);
       const cb = new Vector3().subVectors(uvC, uvB);
       if (cb.dot(perpendicular) < 0) {
         perpendicular.negate();
       }
-      addRectangle([
-        uvA,
-        uvB,
-        new Vector3().addVectors(uvA, perpendicular),
-        new Vector3().addVectors(uvB, perpendicular),
-      ]);
+      addRectangle(
+        [
+          uvA,
+          uvB,
+          new Vector3().addVectors(uvA, perpendicular),
+          new Vector3().addVectors(uvB, perpendicular),
+        ],
+        new Vector2().copy(uvA),
+        new Vector2()
+      );
     }
+    addRectangle(
+      [
+        new Vector3(0, 1, 0),
+        new Vector3(0, 0, 0),
+        new Vector3(1, 1, 0),
+        new Vector3(1, 0, 0),
+      ],
+      new Vector2(),
+      new Vector2()
+    );
     seams.forEach(([e1, e2]) => {
       processTriangle(e1.triangle);
       processTriangle(e2.triangle);
     });
+
+    const geometry = new BufferGeometry();
     geometry.setAttribute("position", positions);
     geometry.setAttribute("normal", normals);
     geometry.setAttribute("uv", uvs);
-    addRectangle([
-      new Vector3(0, 0, 0),
-      new Vector3(0, 1, 0),
-      new Vector3(1, 0, 0),
-      new Vector3(1, 1, 0),
-    ]);
+    geometry.setAttribute("edge", edges);
+    geometry.setAttribute("oppositeEdge", oppositeEdges);
+
     if (i != vertexCount) {
       throw new Error(`Final vertex count mismatch ${i} != ${vertexCount}`);
     }

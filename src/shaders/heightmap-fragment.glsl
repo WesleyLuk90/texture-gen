@@ -4,6 +4,8 @@ uniform float width;
 uniform float height;
 varying vec2 vUv;
 uniform bool flipNormalY;
+varying vec2 vEdge;
+varying vec2 vOppositeEdge;
 
 vec2 maybeFlipY(vec2 pos) {
     if(flipNormalY) {
@@ -37,4 +39,7 @@ void main() {
         yHeightDiff(1.0, vec2(vUv.x, vUv.y + 1.0 / height)));
     height /= 4.0;
     gl_FragColor = vec4(height, height, height, 1.0);
+    if(vEdge.x != 0.0) {
+        gl_FragColor = vec4(25, 25, 25, 1.0);
+    }
 }
