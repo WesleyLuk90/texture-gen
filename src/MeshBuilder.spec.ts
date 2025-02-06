@@ -28,7 +28,7 @@ describe("MeshBuilder", () => {
       origin.y + size,
     ];
   }
-  function build2DArray(values: number[]) {
+  function withZ0(values: number[]) {
     expect(values.length % 2).toBe(0);
     for (let i = values.length / 2 - 1; i >= 0; i--) {
       values.splice(i * 2 + 2, 0, 0);
@@ -70,7 +70,7 @@ describe("MeshBuilder", () => {
     const builder = new MeshBuilder(pos, uv, index);
     const mesh = builder.build();
     expect(Array.from(mesh.getAttribute("position").array)).toEqual(
-      build2DArray([0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1])
+      withZ0([0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1])
     );
   });
 });
