@@ -56,7 +56,7 @@ export class MeshBuilder {
   constructor(
     originalPositions: BufferAttribute,
     private originalUVs: BufferAttribute,
-    private originalIndexes: BufferAttribute
+    originalIndexes: BufferAttribute
   ) {
     this.seams = findSeams(
       originalIndexes.array,
@@ -140,15 +140,27 @@ export class MeshBuilder {
     );
   }
 
-  private getUVBase(indexes: Vector3) {
+  private getUVBase(indexes: Vector3): [Vector2, number] {
     const [a, b, c] = indexes.toArray();
     const uvA = this.readUV(a);
     const uvB = this.readUV(b);
     const uvC = this.readUV(c);
+    const v = new Vector3().subVectors(uvC, uvB);
+    const w = new Vector3().subVectors(uvA, uvB);
 
-    const cb = new Vector3().subVectors(uvC, uvB);
-    const ab = new Vector3().subVectors(uvA, uvB);
-    return new Vector2().copy(uvA);
+    const angle = this.signedAngle2D(v, w);
+    if (angle < 0) {
+      const ab = new Vector2().subVectors(uvA, uvB);
+      return [new Vector2().copy(uvB), Math.atan2(ab.y, ab.x)];
+    } else {
+      const ba = new Vector2().subVectors(uvB, uvA);
+      console.log(ba)
+      return [new Vector2().copy(uvA), Math.atan2(ba.y, ba.x)];
+    }
+  }
+
+  private signedAngle2D(v: Vector3, w: Vector3) {
+    return Math.atan2(v.x * w.y - v.y * w.x, v.x * w.y + v.y * w.x);
   }
 
   private processTriangle(originalIndexes: Vector3, oppositeIndexes: Vector3) {
@@ -164,6 +176,9 @@ export class MeshBuilder {
     if (cb.dot(perpendicular) < 0) {
       perpendicular.negate();
     }
+
+    const [origin1, rotation1] = this.getUVBase(originalIndexes);
+    const [origin2, rotation2] = this.getUVBase(oppositeIndexes);
     this.addRectangle(
       [
         uvA,
@@ -171,12 +186,7 @@ export class MeshBuilder {
         new Vector3().addVectors(uvA, perpendicular),
         new Vector3().addVectors(uvB, perpendicular),
       ],
-      new UVPair(
-        this.getUVBase(originalIndexes),
-        0,
-        this.getUVBase(oppositeIndexes),
-        0
-      )
+      new UVPair(origin1, rotation1, origin2, rotation2)
     );
   }
 
@@ -212,10 +222,13 @@ export class MeshBuilder {
   }
 }
 
+// Polar coordinates + rotation to represent the edge, position1 and position2 represent the vertex in the two uv spaces
 class UVPair {
   constructor(
+    // A positive rotation from rotation 1 should enter the triangle
     readonly position1: Vector2,
     readonly rotation1: number,
+    // A negative rotation from rotation 2 should enter the traignel
     readonly position2: Vector2,
     readonly rotation2: number
   ) {}
