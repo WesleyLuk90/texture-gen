@@ -87,14 +87,14 @@ describe("MeshBuilder", () => {
     );
     const edge1Position = mesh.getAttribute("edge1Position") as BufferAttribute;
     expect(new Vector2().fromBufferAttribute(edge1Position, 7)).toEqual(
-      new Vector2(uv.getX(2), 1 - uv.getY(2))
+      new Vector2(uv.getX(1), 1 - uv.getY(1))
     );
     expect(new Vector2().fromBufferAttribute(edge1Position, 8)).toEqual(
-      new Vector2(uv.getX(2), 1 - uv.getY(2))
+      new Vector2(uv.getX(1), 1 - uv.getY(1))
     );
     const edge1Rotation = mesh.getAttribute("edge1Rotation") as BufferAttribute;
-    expect(edge1Rotation.getX(7)).toEqual(-Math.PI / 4);
-    expect(edge1Rotation.getX(8)).toEqual(-Math.PI / 4);
+    expect(edge1Rotation.getX(7)).toBeCloseTo(-Math.PI / 4);
+    expect(edge1Rotation.getX(8)).toBeCloseTo(-Math.PI / 4);
 
     const edge2Position = mesh.getAttribute("edge2Position") as BufferAttribute;
     expect(new Vector2().fromBufferAttribute(edge2Position, 7)).toEqual(
@@ -103,8 +103,8 @@ describe("MeshBuilder", () => {
     expect(new Vector2().fromBufferAttribute(edge2Position, 8)).toEqual(
       new Vector2(uv.getX(3), 1 - uv.getY(3))
     );
-    // const edge2Rotation = mesh.getAttribute("edge2Rotation") as BufferAttribute;
-    // expect(edge2Rotation.getX(7)).toEqual((-Math.PI * 3) / 4);
-    // expect(edge2Rotation.getX(8)).toEqual((-Math.PI * 3) / 4);
+    const edge2Rotation = mesh.getAttribute("edge2Rotation") as BufferAttribute;
+    expect(edge2Rotation.getX(12)).toBeCloseTo((Math.PI * 3) / 4);
+    expect(edge2Rotation.getX(13)).toBeCloseTo((Math.PI * 3) / 4);
   });
 });
