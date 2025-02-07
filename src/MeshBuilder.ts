@@ -140,7 +140,7 @@ export class MeshBuilder {
     );
   }
 
-  private getUVBase(indexes: Vector3): [Vector2, number] {
+  private getUVBase(indexes: Vector3, reverse: boolean): [Vector2, number] {
     const [a, b, c] = indexes.toArray();
     const uvA = this.readUV(a);
     const uvB = this.readUV(b);
@@ -149,8 +149,10 @@ export class MeshBuilder {
     const w = new Vector3().subVectors(uvA, uvB);
 
     const angle = this.signedAngle2D(v, w);
-    if (angle < 0) {
-      const ab = new Vector2().subVectors(uvA, uvB);
+    if (angle < 0 != reverse) {
+      const ab = new Vector2().subVectors(uvA, uvB); 
+      console.log(uvA, uvB)
+      console.log(ab)
       return [new Vector2().copy(uvB), Math.atan2(ab.y, ab.x)];
     } else {
       const ba = new Vector2().subVectors(uvB, uvA);
@@ -177,8 +179,8 @@ export class MeshBuilder {
       perpendicular.negate();
     }
 
-    const [origin1, rotation1] = this.getUVBase(originalIndexes);
-    const [origin2, rotation2] = this.getUVBase(oppositeIndexes);
+    const [origin1, rotation1] = this.getUVBase(originalIndexes, false);
+    const [origin2, rotation2] = this.getUVBase(oppositeIndexes, true);
     this.addRectangle(
       [
         uvA,

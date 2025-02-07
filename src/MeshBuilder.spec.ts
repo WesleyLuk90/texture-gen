@@ -93,8 +93,8 @@ describe("MeshBuilder", () => {
       new Vector2(uv.getX(2), 1 - uv.getY(2))
     );
     const edge1Rotation = mesh.getAttribute("edge1Rotation") as BufferAttribute;
-    expect(edge1Rotation.getX(7)).toEqual((-Math.PI * 3) / 4);
-    expect(edge1Rotation.getX(8)).toEqual((-Math.PI * 3) / 4);
+    expect(edge1Rotation.getX(7)).toEqual(-Math.PI / 4);
+    expect(edge1Rotation.getX(8)).toEqual(-Math.PI / 4);
 
     const edge2Position = mesh.getAttribute("edge2Position") as BufferAttribute;
     expect(new Vector2().fromBufferAttribute(edge2Position, 7)).toEqual(
