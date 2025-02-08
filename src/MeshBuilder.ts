@@ -151,13 +151,9 @@ export class MeshBuilder {
     const angle = this.signedAngle2D(v, w);
     if (angle > 0 != reverse) {
       const ab = new Vector2().subVectors(uvA, uvB);
-      console.log(uvB, uvA);
-      console.log(ab);
       return [new Vector2().copy(uvB), Math.atan2(ab.y, ab.x)];
     } else {
       const ba = new Vector2().subVectors(uvB, uvA);
-      console.log(uvA, uvB);
-      console.log(ba);
       return [new Vector2().copy(uvA), Math.atan2(ba.y, ba.x)];
     }
   }
